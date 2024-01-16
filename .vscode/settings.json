@@ -1,0 +1,8 @@
+{
+  "appService.defaultWebAppToDeploy": "undefined/subscriptions/efcee99e-8497-4d5d-9d0d-7b440eba0b18/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/pharmacyManagementSystemNextFromVs",
+  "appService.deploySubpath": ".",
+  "appService.zipIgnorePattern": [
+    "node_modules{,/**}",
+    ".vscode{,/**}"
+  ]
+}

@@ -1,10 +1,35 @@
 "use client";
 import { useState } from "react";
+import axios from 'axios';
+
+import PatientSearch from "@/components/PatientSearch";
+import MedicineSearch from "@/components/MedicineSearch";
+import Basket from "@/components/Basket";
 
 function page() {
   const [tcNo, setTcNo] = useState("");
   const [responseData, setResponseData] = useState(null);
   const [selectedPerson, setSelectedPerson] = useState(null);
+
+  const [searchTerm, setSearchTerm] = useState("");
+  const [responseMedicines, setResponseMedicines] = useState(null);
+
+  const [basket, setBasket] = useState([]);
+
+  const handleAddToBasket = (medicine) => {
+    // Kontrol etmek için önce basket içinde medicine'in bulunup bulunmadığını kontrol et
+    const isMedicineInBasket = basket.some((item) => item.id === medicine.id);
+
+    // Eğer medicine basket içinde yoksa ekleyin
+    if (!isMedicineInBasket) {
+      setBasket([...basket, medicine]);
+    }
+  };
+
+  const handleDeleteItem = (itemId) => {
+    const updatedBasket = basket.filter((item) => item.id !== itemId);
+    setBasket(updatedBasket);
+  };
 
   const handleGetPatient = async () => {
     try {
@@ -14,7 +39,7 @@ function page() {
       const data = await response.json();
 
       // Gelen veriyi konsola yazdır
-      console.log("Response Data:", data);
+      // console.log("Response Data:", data);
 
       // State'i güncelle
       setResponseData(data);
@@ -29,9 +54,50 @@ function page() {
     }
   };
 
+
+  const handleSearchMedicine = async () => {
+    try {
+      // Sunucu tarafında saklanan abonelik anahtarı
+      const subscriptionKey = '8e6b081556e842c99687d44c5ef5ebe3';
+      const apiUrl = `https://prescriptionmanagementsystemresource.azure-api.net/medicine/Medicine/SearchByName?searchTerm=${searchTerm}`;
+  
+      const response = await axios.get(apiUrl, {
+        headers: {
+          'Ocp-Apim-Subscription-Key': subscriptionKey,
+        },
+      });
+  
+      // Axios, HTTP durum kodunu otomatik olarak kontrol eder
+      // Eğer durum kodu 2xx (başarılı) ise bu blok çalışır
+      const data = response.data;
+  
+      // Log the response data to the console
+      console.log("Response Medicines:", data);
+  
+      // Update the state
+      setResponseMedicines(data);
+    } catch (error) {
+      console.error("Error fetching data:", error.message);
+    }
+  };
+  
+
+  const handleChange = (event) => {
+    // Update the state with the entered value
+    setSearchTerm(event.target.value);
+    console.log(`SearchTerm`, searchTerm);
+    // Call the search function with the entered value
+    // handleSearchMedicine(event.target.value);
+  };
+
+  const calculateTotalPrice = () => {
+    let total = basket.reduce((total, item) => total + item.price, 0);
+    return total.toFixed(2);
+  };
+
   return (
     <main className="flex min-h-screen flex-row justify-center p-24 gap-2 ">
-      <div className="xl:max-w-xl min-w-xl">
+      <div className=" w-[600px] ">
         <div className=" w-full mx-auto bg-gradient-to-r from-lime-800  to-lime-600 p-4 rounded-t-xl">
           PRESCRIPTION MANAGMENT SYSTEM
         </div>
@@ -40,24 +106,12 @@ function page() {
             <div className=" w-32 pl-2 ">Pharmacy</div>
             <div className="flex-auto">Faruk Eczanesi</div>
           </div>
-          <div className="flex h-14 bg-slate-800 rounded-lg items-center ">
-            <div className=" w-32 pl-2 ">TC No:</div>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Type here"
-                className="input input-bordered w-full max-w-xs"
-                value={tcNo}
-                onChange={(e) => setTcNo(e.target.value)}
-              />
-              <button
-                className="btn btn-outline btn-success"
-                onClick={handleGetPatient}
-              >
-                Get Patient
-              </button>
-            </div>
-          </div>
+          {/* Patient Search */}
+          <PatientSearch
+            tcNo={tcNo}
+            setTcNo={setTcNo}
+            handleGetPatient={handleGetPatient}
+          />
           <div className="flex h-14 bg-slate-800 rounded-lg items-center ">
             <div className=" w-32 pl-2 ">Fullname</div>
             <div className="flex-auto">
@@ -66,44 +120,35 @@ function page() {
             </div>
           </div>
           <div className="flex flex-col bg-slate-800 rounded-lg ">
-            <div className="flex items-center h-14 w-full">
-              <div className=" w-32 pl-2 ">Medicine</div>
-              <div className="flex-auto">
-                <input
-                  type="text"
-                  placeholder="Type here"
-                  className="input input-bordered w-full max-w-xs"
-                />
-              </div>
-            </div>
+            {/* Medicine Search */}
+            <MedicineSearch
+              handleChange={handleChange}
+              handleSearchMedicine={handleSearchMedicine}
+            />
             <div className="flex flex-col bg-slate-800 rounded-lg gap-2 p-2 max-h-96 overflow-y-scroll">
-              {/* one line medicine for search */}
-              <div className="flex justify-between items-center bg-slate-700 p-2 rounded-lg">
-                <div className="">Medicine Name</div>
-                <button className="btn btn-outline btn-success">Add</button>
-              </div>
-              {/* one line medicine for search */}
-              <div className="flex justify-between items-center bg-slate-700 p-2 rounded-lg">
-                <div className="">Medicine Name</div>
-                <button className="btn btn-outline btn-success">Add</button>
-              </div>
-              {/* one line medicine for search */}
-              <div className="flex justify-between items-center bg-slate-700 p-2 rounded-lg">
-                <div className="">Medicine Name</div>
-                <button className="btn btn-outline btn-success">Add</button>
-              </div>
-              {/* one line medicine for search */}
-              <div className="flex justify-between items-center bg-slate-700 p-2 rounded-lg">
-                <div className="">Medicine Name</div>
-                <button className="btn btn-outline btn-success">Add</button>
-              </div>
+              {responseMedicines &&
+                responseMedicines.map((medicine, index) => (
+                  // one line medicine for search
+                  <div
+                    key={index}
+                    className="flex justify-between items-center bg-slate-700 p-2 rounded-lg"
+                  >
+                    <div className="">{medicine.name}</div>
+                    <button
+                      className="btn btn-outline btn-success"
+                      onClick={() => handleAddToBasket(medicine)}
+                    >
+                      Add
+                    </button>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
       </div>
       {/* Basket */}
-      <div className="xl:max-w-xl xl:min-w-xl bg-slate-800 rounded-xl h-[500px] ">
-        <div className="overflow-x-auto h-[450px]">
+      <div className="xl:max-w-xl xl:min-w-xl bg-slate-800 rounded-xl h-[500px] w-[400px] ">
+        <div className="overflow-y-auto h-[450px]">
           <table className="table">
             {/* head */}
             <thead>
@@ -115,140 +160,30 @@ function page() {
               </tr>
             </thead>
             <tbody>
-              {/* row 1 */}
-              <tr className="bg-base-200">
-                <th>1</th>
-                <td className=" max-w-32 text-xs ">
-                  Quality Control Specialist
-                </td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 2 */}
-              <tr>
-                <th>2</th>
-                <td>Desktop Support Technician</td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 3 */}
-              <tr className="bg-base-200">
-                <th>3</th>
-                <td>Brice Swyre</td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 2 */}
-              <tr>
-                <th>4</th>
-                <td className=" max-w-32 ">
-                  Desktop Support Technician sadsa sad fdsdf sd f sd f sd f s
-                  dsd dfddsfdsfsd fdvfvdvweas d asd s f sdf sd f sdg df rgdfgdf.
-                  dfgdf
-                </td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 3 */}
-              <tr className="bg-base-200">
-                <th>3</th>
-                <td>Brice Swyre</td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 2 */}
-              <tr>
-                <th>4</th>
-                <td className=" max-w-32 ">
-                  Desktop Support Technician sadsa sad fdsdf sd f sd f sd f s
-                  dsd dfddsfdsfsd fdvfvdvweas d asd s f sdf sd f sdg df rgdfgdf.
-                  dfgdf
-                </td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 3 */}
-              <tr className="bg-base-200">
-                <th>3</th>
-                <td>Brice Swyre</td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 2 */}
-              <tr>
-                <th>4</th>
-                <td className=" max-w-32 ">
-                  Desktop Support Technician sadsa sad fdsdf sd f sd f sd f s
-                  dsd dfddsfdsfsd fdvfvdvweas d asd s f sdf sd f sdg df rgdfgdf.
-                  dfgdf
-                </td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 3 */}
-              <tr className="bg-base-200">
-                <th>3</th>
-                <td>Brice Swyre</td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
-              {/* row 2 */}
-              <tr>
-                <th>4</th>
-                <td className=" max-w-32 ">
-                  Desktop Support Technician sadsa sad fdsdf sd f sd f sd f s
-                  dsd dfddsfdsfsd fdvfvdvweas d asd s f sdf sd f sdg df rgdfgdf.
-                  dfgdf
-                </td>
-                <td>123.45tl</td>
-                <td>
-                  <button className="btn btn-xs btn-outline btn-error">
-                    Delete
-                  </button>
-                </td>
-              </tr>
+              {basket.map((item, index) => (
+                <tr
+                  key={index}
+                  className={`${index % 2 !== 1 ? "bg-base-200" : ""}`}
+                >
+                  <th>{index + 1}</th>
+                  <td className="max-w-32 text-xs">{item.name}</td>
+                  <td>{item.price}tl</td>
+                  <td>
+                    <button
+                      className="btn btn-xs btn-outline btn-error"
+                      onClick={() => handleDeleteItem(item.id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
         <div className="bg-slate-800 flex flex-row justify-between py-4 px-2 rounded-b-xl items-center">
           <div>
-            Toplam:<span>345.66</span> tl
+            Toplam:<span>{calculateTotalPrice()}</span> tl
           </div>
           <button className="btn btn-success ">Save</button>
         </div>
